@@ -1,0 +1,68 @@
+#hdr
+#include <3ds.h>
+#include <stdio.h>
+#include <string.h>
+
+
+#include "fs/lppfs.hpp"
+
+
+using MM::FS::FSFile;
+#end
+
+namespace MM
+{
+    class AppFile : public FSFile
+    {
+    public:
+        
+        AppFile(Handle hand) : FSFile(hand)
+        {
+            
+        }
+        
+        ~AppFile()
+        {
+            filehandle = 0;
+        }
+        
+        Result info(AM_TitleEntry* te)
+        {
+            return AM_GetCiaFileInfo(MEDIATYPE_SD, te, filehandle);
+        }
+    };
+    
+    class AppMan
+    {
+    public:
+        
+        static Result BeginInstall(AppFile** out, FS_MediaType dest)
+        {
+            Handle hand = 0;
+            Result res = AM_StartCiaInstall(dest, &hand);
+            if(res < 0) return res;
+            
+            *out = new AppFile(hand);
+            
+            return 0;
+        }
+        
+        static Result FugInstall(AppFile** f)
+        {
+            AppFile* af = *f;
+            Result res = AM_CancelCIAInstall(af->filehandle);
+            delete af;
+            *f = nullptr;
+            return res;
+        }
+        
+        static Result FinInstall(AppFile** f)
+        {
+            AppFile* af = *f;
+            Result res = AM_FinishCiaInstall(af->filehandle);
+            delete af;
+            *f = nullptr;
+            return res;
+        }
+    };
+}
