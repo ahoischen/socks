@@ -69,6 +69,42 @@ const int port = 6459;
     }\
 })
 
+extern "C" void __system_allocateHeaps(void)
+{
+    extern char* fake_heap_start;
+    extern char* fake_heap_end;
+    
+    extern u32 __ctru_heap;
+    extern u32 __ctru_heap_size;
+    extern u32 __ctru_linear_heap;
+    extern u32 __ctru_linear_heap_size;
+    
+    u32 tmp = 0;
+    
+    // Distribute available memory into halves, aligning to page size.
+    //u32 size = (osGetMemRegionFree(MEMREGION_SYSTEM) / 2) & 0xFFFFF000;
+    __ctru_heap_size = 0x130000;
+    __ctru_linear_heap_size = 0x120000; 
+    
+    //*(u32*)0x00100998 = size;
+    
+    
+    // Allocate the application heap
+    __ctru_heap = 0x08000000;
+    svcControlMemory(&tmp, __ctru_heap, 0x0, __ctru_heap_size, (MemOp)MEMOP_ALLOC, (MemPerm)(MEMPERM_READ | MEMPERM_WRITE));
+    
+    // Allocate the linear heap
+    //__ctru_linear_heap = 0x14000000;
+    //svcControlMemory(&tmp, 0x1C000000 - __ctru_linear_heap_size, 0x0, __ctru_linear_heap_size, (MemOp)MEMOP_FREE, (MemPerm)(0));
+    Result res = svcControlMemory(&__ctru_linear_heap, 0x0, 0x0, __ctru_linear_heap_size, (MemOp)MEMOP_ALLOC_LINEAR, (MemPerm)(MEMPERM_READ | MEMPERM_WRITE));
+    if(res < 0) *(u32*)0x00100070 = res;
+    if(__ctru_linear_heap < 0x10000000) *(u32*)0x00100071 = __ctru_linear_heap;
+    
+    // Set up newlib heap
+    fake_heap_start = (char*)__ctru_heap;
+    fake_heap_end = fake_heap_start + __ctru_heap_size;
+}
+
 int pollsock(int sock, int wat, int timeout = 0)
 {
     struct pollfd pd;
@@ -234,7 +270,7 @@ int main()
 {
   // =====[PROGINIT]=====
   
-  gfxInit(GSP_RGB565_OES, GSP_RGBA8_OES, false);
+  gfxInit(GSP_RGB565_OES, GSP_RGBA4_OES, false);
   acInit();
   amInit();
   nsInit();
@@ -292,7 +328,7 @@ int main()
   
   consoleClear();
   
-  puts("socks v0.0_dev1\n");
+  puts("socks v0.0_dev2\n");
   
   wait4wifi();
   
@@ -362,7 +398,7 @@ int main()
             }
             else
             {
-                soc = new bufsoc(cli, 0x12000);
+                soc = new bufsoc(cli, 0x10000);
             }
         }
         else if(pollsock(sock, POLLERR) == POLLERR)

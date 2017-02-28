@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     
     do
     {
-        dummy[0] = 0x0000000000000C02ULL;
+        dummy[0] = 0x0000000100000C02ULL;
         
         u32 ech[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
         u32 tmp = 0;
@@ -264,7 +264,7 @@ int main(int argc, char** argv)
     
     do
     {
-        dummy[0] = 0x0000000000000C05ULL;
+        dummy[0] = 0x0000000100000C05ULL;
         wribuf(sock, (u8*)dummy);
     }
     while(0);
