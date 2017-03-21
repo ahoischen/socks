@@ -55,19 +55,22 @@ const int port = 6459;
     }\
 })
 
-#define wait4wifi()\
-({\
-    puts("Waiting for wifi...");\
+static int haznet = 0;
+
+int wait4wifi(int ping_once)\
+{\
+    haznet = 0;\
     while(aptMainLoop())\
     {\
         u32 wifi = 0;\
-        ACU_GetWifiStatus(&wifi);\
-        if(ACU_GetWifiStatus(&wifi) >= 0 && wifi) break;\
         hidScanInput();\
-        if(hidKeysHeld() & KEY_SELECT) goto killswitch;\
+        if(hidKeysHeld() & KEY_SELECT) return 0;\
+        if(ACU_GetWifiStatus(&wifi) >= 0 && wifi) { haznet = 1; break; }\
+        if(ping_once) return 0;\
         gspWaitForVBlank();\
     }\
-})
+    return haznet;\
+}
 
 extern "C" void __system_allocateHeaps(void)
 {
@@ -324,44 +327,54 @@ int main()
   res = socInit((u32*)memalign(0x1000, 0x100000), 0x100000);
   if(res < 0) throw res;
   
+  
   netreset:
   
   consoleClear();
   
-  puts("socks v0.0_dev2\n");
+  puts("socks v0.0_dev3\n");
   
-  wait4wifi();
-  
-  cy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-  if(cy <= 0)
+  if(haznet && errno == EINVAL)
   {
-      printf("socket error: (%i) %s\n", errno, strerror(errno));
-      hangmacro();
+      errno = 0;
+      //puts("Waiting for wifi to reset");
+      while(wait4wifi(1)) gspWaitForVBlank();
   }
   
-  sock = cy;
-  
-  struct sockaddr_in sao;
-  sao.sin_family = AF_INET;
-  sao.sin_addr.s_addr = gethostid();
-  sao.sin_port = htons(port);
-  
-  if(bind(sock, (struct sockaddr*)&sao, sizeof(sao)) < 0)
+  if(wait4wifi(1))
   {
-      printf("bind error: (%i) %s\n", errno, strerror(errno));
-      hangmacro();
-  }
-  
-  //fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
-  
-  if(listen(sock, 1) < 0)
-  {
-      printf("listen error: (%i) %s\n", errno, strerror(errno));
-      hangmacro();
+      cy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+      if(cy <= 0)
+      {
+          printf("socket error: (%i) %s\n", errno, strerror(errno));
+          hangmacro();
+      }
+      
+      sock = cy;
+      
+      struct sockaddr_in sao;
+      sao.sin_family = AF_INET;
+      sao.sin_addr.s_addr = gethostid();
+      sao.sin_port = htons(port);
+      
+      if(bind(sock, (struct sockaddr*)&sao, sizeof(sao)) < 0)
+      {
+          printf("bind error: (%i) %s\n", errno, strerror(errno));
+          hangmacro();
+      }
+      
+      //fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
+      
+      if(listen(sock, 1) < 0)
+      {
+          printf("listen error: (%i) %s\n", errno, strerror(errno));
+          hangmacro();
+      }
   }
   
   reloop:
   
+  if(haznet)
   do
   {
       char buf[256];
@@ -369,6 +382,7 @@ int main()
       printf("\nListening on %s:%i\n", buf, port);
   }
   while(0);
+  else puts("\nWaiting for wifi...");
   
   // =====[RUN]=====
   
@@ -388,7 +402,11 @@ int main()
     
     if(!soc)
     {
-        if(pollsock(sock, POLLIN) == POLLIN)
+        if(!haznet)
+        {
+            if(wait4wifi(1)) goto netreset;
+        }
+        else if(pollsock(sock, POLLIN) == POLLIN)
         {
             int cli = accept(sock, (struct sockaddr*)&sai, &sizeof_sai);
             if(cli < 0)
@@ -403,6 +421,7 @@ int main()
         }
         else if(pollsock(sock, POLLERR) == POLLERR)
         {
+            printf("POLLERR (%i) %s", errno, strerror(errno));
             goto netreset;
         }
     }
