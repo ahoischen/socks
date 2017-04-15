@@ -31,7 +31,7 @@ BUILD		    :=	build
 SOURCES		    :=	soos
 DATA		    :=	data
 INCLUDES	    :=	inc
-ROMFS   	    :=	$(TOPDIR)/assets/ROMFS
+#ROMFS   	    :=	$(TOPDIR)/assets/ROMFS
 APP_TITLE       :=  socks
 APP_DESCRIPTION :=  socks dev remote
 APP_AUTHOR      :=  MarcusD
@@ -163,7 +163,10 @@ DEPENDS	:=	$(OFILES:.o=.d)
 # main targets
 #---------------------------------------------------------------------------------
 .PHONY: all
-all	:	$(OUTPUT).cia
+#all	:	$(OUTPUT).cia
+all	:	$(OUTPUT).3dsx $(OUTPUT).cia
+
+$(OUTPUT).3dsx : $(OUTPUT).elf $(OUTPUT).smdh
 
 $(OUTPUT).elf	:	$(OFILES)
 
@@ -179,7 +182,8 @@ $(OUTPUT)-stripped.elf: $(OUTPUT).elf
 	@$(PREFIX)strip $(OUTPUT)-stripped.elf
 
 $(OUTPUT).cia: $(OUTPUT)-stripped.elf $(TOPDIR)/assets/banner.bin $(TOPDIR)/assets/image.bin
-	@makerom -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/assets/cia.rsf -target t -exefslogo -elf $(OUTPUT)-stripped.elf -icon $(TOPDIR)/assets/image.bin -banner $(TOPDIR)/assets/banner.bin -DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="$(APP_PRODUCT_CODE)" -DAPP_UNIQUE_ID="$(APP_UNIQUE_ID)" -DAPP_ROMFS="$(ROMFS)"
+	@makerom -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/assets/cia.rsf -target t -exefslogo -elf $(OUTPUT)-stripped.elf -icon $(TOPDIR)/assets/image.bin -banner $(TOPDIR)/assets/banner.bin -DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="$(APP_PRODUCT_CODE)" -DAPP_UNIQUE_ID="$(APP_UNIQUE_ID)"
+    #-DAPP_ROMFS="$(ROMFS)"
 	@echo "built ... $(notdir $@)"
 
 #---------------------------------------------------------------------------------------

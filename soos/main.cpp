@@ -274,9 +274,6 @@ int main()
   // =====[PROGINIT]=====
   
   gfxInit(GSP_RGB565_OES, GSP_RGBA4_OES, false);
-  acInit();
-  amInit();
-  nsInit();
   
   // =====[VARS]=====
   
@@ -318,6 +315,23 @@ int main()
   std::set_unexpected(_ded);
   std::set_terminate(_ded);
 #endif
+
+  res = acInit();
+  if(res < 0)
+  {
+      printf("Failed to init ac (%08X)\n");
+      hangmacro();
+  }
+  
+  res = amInit();
+  if(res < 0)
+  {
+      printf("Failed to init the application manager (%08X)\n");
+      puts("\nMake sure to patch service access somehow!\n");
+      hangmacro();
+  }
+  
+  nsInit();
   
   puts("[MAIN] Initializing SDMC");
   
@@ -332,7 +346,7 @@ int main()
   
   consoleClear();
   
-  puts("socks v0.0_dev3\n");
+  puts("socks v1.0\n");
   
   if(haznet && errno == EINVAL)
   {
